@@ -80,14 +80,26 @@ func GetTracker(ctx context.Context) *Tracker {
 }
 
 // CE 意思是 CheckError ，为了方便按键而起这个名字。
-func CE(ctx context.Context, err error, trackValues V) {
+func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 	if err == nil {
 		return
 	}
 
-	// 追踪当前的栈信息
 	var stack ExceptionStack
-	stack.Vars = trackValues
+	// 合并传入的参数
+	for _, tv := range trackValues {
+		if tv == nil {
+			continue
+		}
+		if stack.Vars == nil {
+			stack.Vars = tv
+		} else {
+			for k, v := range tv {
+				stack.Vars[k] = v
+			}
+		}
+	}
+	// 追踪当前的栈信息
 	if pc, file, line, ok := runtime.Caller(1); ok {
 		stack.Filename = file
 		stack.Lineno = line
