@@ -1,0 +1,34 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  test:
+    name: Test All
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.16
+      id: go
+
+    - name: Check Out Source Code
+      uses: actions/checkout@v1
+
+    - name: Do Test
+      run: go test -timeout 120s -coverprofile=coverage.out ./...
+
+    - name: Generate Coverage Report
+      run: mkdir -p ./public && go tool cover -html coverage.out -o ./public/coverage.html
+
+    - name: GitHub Pages action
+      uses: peaceiris/actions-gh-pages@v3.6.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        user_name: Lewin Lan
+        user_email: lewin.lan.cn@gmail.com
