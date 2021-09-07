@@ -1,0 +1,622 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>alog: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/saodd/alog/config.go (0.0%)</option>
+				
+				<option value="file1">github.com/saodd/alog/context.go (80.0%)</option>
+				
+				<option value="file2">github.com/saodd/alog/gin_middlewares.go (0.0%)</option>
+				
+				<option value="file3">github.com/saodd/alog/recover.go (90.9%)</option>
+				
+				<option value="file4">github.com/saodd/alog/tracker.go (60.0%)</option>
+				
+				<option value="file5">github.com/saodd/alog/utils.go (72.7%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package alog
+
+var (
+        ConfigAppVersion      = ""
+        ConfigSentryUrl       = ""
+        ConfigSentryPublicKey = ""
+)
+
+func InitAlog(
+        version string,
+        sentryUrl, sentryPublicKey string,
+) <span class="cov0" title="0">{
+        ConfigAppVersion = version
+        ConfigSentryUrl = sentryUrl
+        ConfigSentryPublicKey = sentryPublicKey
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package alog
+
+import (
+        "context"
+)
+
+func CheckContext(ctx context.Context) <span class="cov0" title="0">{
+        CheckTracker(GetTracker(ctx))
+}</span>
+
+func WithTracker(parent context.Context) (context.Context, context.CancelFunc) <span class="cov8" title="1">{
+        tracker := NewTracker()
+        ctx := context.WithValue(parent, KeyTracker, tracker)
+        return ctx, func() </span><span class="cov8" title="1">{
+                CheckTracker(tracker)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package alog
+
+import (
+        "fmt"
+        "github.com/getsentry/sentry-go"
+        "github.com/gin-gonic/gin"
+        "net"
+        "net/http"
+        "os"
+        "strings"
+        "time"
+)
+
+// GinWithLogger returns gin.HandlerFunc, it should be used as a middleware.
+// Compare to gin.Logger(), it prints "TrackerID" for each request in addition.
+func GinWithLogger() gin.HandlerFunc <span class="cov0" title="0">{
+        formatter := func(param gin.LogFormatterParams) string </span><span class="cov0" title="0">{
+                var statusColor, methodColor, resetColor string
+                if param.IsOutputColor() </span><span class="cov0" title="0">{
+                        statusColor = param.StatusCodeColor()
+                        methodColor = param.MethodColor()
+                        resetColor = param.ResetColor()
+                }</span>
+
+                <span class="cov0" title="0">if param.Latency &gt; time.Minute </span><span class="cov0" title="0">{
+                        // Truncate in a golang &lt; 1.8 safe way
+                        param.Latency = param.Latency - param.Latency%time.Second
+                }</span>
+                <span class="cov0" title="0">var trackID, ok = param.Keys[KeyTrackID].(string)
+                if ok </span><span class="cov0" title="0">{
+                        return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s[%-8s] %#v\n%s",
+                                param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+                                statusColor, param.StatusCode, resetColor,
+                                param.Latency,
+                                param.ClientIP,
+                                methodColor, param.Method, resetColor,
+                                trackID,
+                                param.Path,
+                                param.ErrorMessage,
+                        )
+                }</span>
+                <span class="cov0" title="0">return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
+                        param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+                        statusColor, param.StatusCode, resetColor,
+                        param.Latency,
+                        param.ClientIP,
+                        methodColor, param.Method, resetColor,
+                        param.Path,
+                        param.ErrorMessage,
+                )</span>
+
+        }
+
+        <span class="cov0" title="0">cfg := gin.LoggerConfig{
+                Formatter: formatter,
+        }
+        return gin.LoggerWithConfig(cfg)</span>
+}
+
+// GinWithTracker returns gin.HandlerFunc, it should be used as a middleware.
+// It injects a Tracker to *gin.Context for each request.
+func GinWithTracker() gin.HandlerFunc <span class="cov0" title="0">{
+        return func(c *gin.Context) </span><span class="cov0" title="0">{
+                tracker := NewTracker()
+                c.Set(KeyTracker, tracker)
+                c.Set(KeyTrackID, tracker.ID)
+                c.Header(GinHttpResponseHeader, tracker.ID)
+
+                c.Next()
+
+                if tracker.Exceptions != nil </span><span class="cov0" title="0">{
+                        tracker.Request = sentry.NewRequest(c.Request)
+                        if ConfigSentryUrl == "" </span><span class="cov0" title="0">{
+                                go tracker.Print()
+                        }</span> else<span class="cov0" title="0"> {
+                                go BuildAndSendSentryEvent(tracker)
+                        }</span>
+                }
+        }
+}
+
+// GinWithRecover returns gin.HandlerFunc, it should be used as a middleware.
+// It recovers your server from panic, and record the error in Tracker (to handle it later).
+func GinWithRecover() gin.HandlerFunc <span class="cov0" title="0">{
+        return func(ctx *gin.Context) </span><span class="cov0" title="0">{
+                defer func() </span><span class="cov0" title="0">{
+                        if err := recover(); err != nil </span><span class="cov0" title="0">{
+                                // Check for a broken connection, as it is not really a condition that warrants a panic stack trace.
+                                // 逻辑来自gin.RecoveryWithWriter()
+                                var brokenPipe bool
+                                if ne, ok := err.(*net.OpError); ok </span><span class="cov0" title="0">{
+                                        if se, ok := ne.Err.(*os.SyscallError); ok </span><span class="cov0" title="0">{
+                                                if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") </span><span class="cov0" title="0">{
+                                                        brokenPipe = true
+                                                }</span>
+                                        }
+                                }
+
+                                <span class="cov0" title="0">TraceStack(ctx, err)
+
+                                // If the connection is dead, we can't write a status to it.
+                                // 逻辑来自gin.RecoveryWithWriter()
+                                if brokenPipe </span><span class="cov0" title="0">{
+                                        ctx.Error(err.(error))
+                                        ctx.Abort()
+                                }</span> else<span class="cov0" title="0"> {
+                                        ctx.AbortWithStatus(http.StatusInternalServerError)
+                                }</span>
+                        }
+                }()
+                <span class="cov0" title="0">ctx.Next()</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package alog
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "runtime"
+        "strings"
+)
+
+func TraceStack(ctx context.Context, e interface{}) <span class="cov8" title="1">{
+        err, ok := e.(error)
+        if !ok </span><span class="cov8" title="1">{
+                err = errors.New(fmt.Sprint(e))
+        }</span>
+
+        // 取出所有栈
+        <span class="cov8" title="1">var stacks []*ExceptionStack
+        for i := 2; ; i++ </span><span class="cov8" title="1">{
+                pc, file, line, ok := runtime.Caller(i)
+                if !ok </span><span class="cov8" title="1">{
+                        break</span>
+                }
+                <span class="cov8" title="1">var stack ExceptionStack
+                stack.Filename = file
+                stack.Lineno = line
+                f := runtime.FuncForPC(pc)
+                words := strings.Split(f.Name(), ".")
+                if len(words) == 2 </span><span class="cov8" title="1">{
+                        stack.Package, stack.Function = words[0], words[1]
+                }</span>
+                <span class="cov8" title="1">stacks = append(stacks, &amp;stack)</span>
+        }
+
+        // 如果ctx里有Tracker就放进去统一处理，否则直接丢到日志里去。
+        <span class="cov8" title="1">tracker := GetTracker(ctx)
+        if tracker != nil </span><span class="cov8" title="1">{
+                tracker.lock.Lock()
+                defer tracker.lock.Unlock()
+                for _, ex := range tracker.Exceptions </span><span class="cov0" title="0">{
+                        if ex.Error == err </span><span class="cov0" title="0">{
+                                ex.Stacks = append(ex.Stacks, stacks...)
+                                return
+                        }</span>
+                }
+                <span class="cov8" title="1">tracker.Exceptions = append(tracker.Exceptions, &amp;Exception{
+                        Error:  err,
+                        Stacks: stacks,
+                })</span>
+        } else<span class="cov8" title="1"> {
+                b := strings.Builder{}
+                b.WriteString(err.Error())
+                b.WriteByte('\n')
+                for _, stack := range stacks </span><span class="cov8" title="1">{
+                        b.WriteString(fmt.Sprintf("    %s:%d\n", stack.Filename, stack.Lineno))
+                }</span>
+                <span class="cov8" title="1">RECOVER.Println(b.String())</span>
+        }
+}
+
+func Recover(ctx context.Context) <span class="cov8" title="1">{
+        if err := recover(); err != nil </span><span class="cov8" title="1">{
+                TraceStack(ctx, err)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package alog
+
+import (
+        "bytes"
+        "context"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "github.com/getsentry/sentry-go"
+        "io/ioutil"
+        "net/http"
+        "os"
+        "reflect"
+        "runtime"
+        "strings"
+        "sync"
+        "time"
+)
+
+const (
+        KeyTracker            = "_alog_Tracker"
+        KeyTrackID            = "_alog_TrackID"
+        GinHttpResponseHeader = "X-Track"
+)
+
+type V map[string]interface{}
+
+type Tracker struct {
+        ID         string
+        Exceptions []*Exception
+        Request    *sentry.Request
+        lock       sync.Mutex
+}
+type Exception struct {
+        Error  error
+        Stacks []*ExceptionStack
+}
+type ExceptionStack struct {
+        Filename string
+        Package  string
+        Function string
+        Lineno   int
+        Vars     V
+}
+
+func NewTracker() *Tracker <span class="cov8" title="1">{
+        return &amp;Tracker{
+                ID: string(RandomBytes(8)),
+        }
+}</span>
+
+func (t *Tracker) Print() <span class="cov8" title="1">{
+        var buf = time.Now().UTC().AppendFormat([]byte("[TRACK] "), "2006/01/02 15:04:05 [")
+        buf = append(buf, []byte(t.ID)...)
+        buf = append(buf, ']', '\n')
+        for i, ex := range t.Exceptions </span><span class="cov8" title="1">{
+                buf = append(buf, []byte(fmt.Sprintf("  [%d] %s\n", i, ex.Error.Error()))...)
+                for _, stack := range ex.Stacks </span><span class="cov8" title="1">{
+                        js, _ := json.Marshal(stack.Vars)
+                        buf = append(buf, fmt.Sprintf("  %s:%d: %s\n", stack.Filename, stack.Lineno, js)...)
+                }</span>
+        }
+        <span class="cov8" title="1">os.Stdout.Write(buf)</span>
+}
+
+func GetTrackID(ctx context.Context) string <span class="cov0" title="0">{
+        tracker := GetTracker(ctx)
+        if tracker != nil </span><span class="cov0" title="0">{
+                return tracker.ID
+        }</span>
+        <span class="cov0" title="0">return ""</span>
+}
+
+func GetTracker(ctx context.Context) *Tracker <span class="cov8" title="1">{
+        tracker, ok := ctx.Value(KeyTracker).(*Tracker)
+        if ok </span><span class="cov8" title="1">{
+                return tracker
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func ce(depth int, ctx context.Context, err error, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+        var stack ExceptionStack
+        // 合并传入的参数
+        for _, tv := range trackValues </span><span class="cov8" title="1">{
+                if tv == nil </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+                <span class="cov8" title="1">if stack.Vars == nil </span><span class="cov8" title="1">{
+                        stack.Vars = tv
+                }</span> else<span class="cov8" title="1"> {
+                        for k, v := range tv </span><span class="cov8" title="1">{
+                                stack.Vars[k] = v
+                        }</span>
+                }
+        }
+        // 追踪当前的栈信息
+        <span class="cov8" title="1">if pc, file, line, ok := runtime.Caller(depth); ok </span><span class="cov8" title="1">{
+                stack.Filename = file
+                stack.Lineno = line
+                f := runtime.FuncForPC(pc)
+                words := strings.Split(f.Name(), ".")
+                if len(words) == 2 </span><span class="cov8" title="1">{
+                        stack.Package, stack.Function = words[0], words[1]
+                }</span>
+        } else<span class="cov8" title="1"> {
+                return
+        }</span>
+
+        // 如果ctx里有Tracker就放进去统一处理，否则直接丢到日志里去。
+        <span class="cov8" title="1">tracker := GetTracker(ctx)
+        if tracker != nil </span><span class="cov8" title="1">{
+                tracker.lock.Lock()
+                defer tracker.lock.Unlock()
+                for _, ex := range tracker.Exceptions </span><span class="cov8" title="1">{
+                        if ex.Error == err </span><span class="cov8" title="1">{
+                                ex.Stacks = append(ex.Stacks, &amp;stack)
+                                return
+                        }</span>
+                }
+                <span class="cov8" title="1">tracker.Exceptions = append(tracker.Exceptions, &amp;Exception{
+                        Error:  err,
+                        Stacks: []*ExceptionStack{&amp;stack},
+                })</span>
+        } else<span class="cov8" title="1"> {
+                js, _ := json.Marshal(stack.Vars)
+                ERROR.Printf("%s:%d: %s. %s\n", stack.Filename, stack.Lineno, err, js)
+        }</span>
+}
+
+// CE 意思是 CheckError ，为了方便按键而起这个名字。
+func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+        if err == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">ce(2, ctx, err, trackValues...)</span>
+}
+
+// CEI 意思是 Check Error Interface，可以灵活处理interface{}。
+// 建议不要用在 recover() 的情况，会丢失 panic() 的位置，请使用 CERecover 替代。
+// 建议不要使用可比较值，否则可能与其他错误栈混在一起，最好用指针或者接口变量。
+func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
+                return
+        }</span>
+        <span class="cov8" title="1">e, ok := err.(error)
+        if ok </span><span class="cov8" title="1">{
+                ce(2, ctx, e, trackValues...)
+        }</span> else<span class="cov8" title="1"> {
+                ce(2, ctx, errors.New(fmt.Sprintf("Interface&lt;%T&gt;: %v", err, err)), trackValues...)
+        }</span>
+}
+
+// CERecover 意思是 Check Error Recover， 进一步简化操作。
+// 用法： defer CERecover(ctx, ...)
+func CERecover(ctx context.Context, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+        err := recover()
+        if err == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">e, ok := err.(error)
+        if !ok </span><span class="cov0" title="0">{
+                e = errors.New(fmt.Sprintf("Interface&lt;%T&gt;: %v", err, err))
+        }</span>
+        <span class="cov8" title="1">ce(3, ctx, e, trackValues...)
+        for i := 4; i &lt; 10; i++ </span><span class="cov8" title="1">{ // 不确定追踪到什么程度才能追到用户代码。暂定最多追6层。
+                ce(i, ctx, e)
+        }</span>
+}
+
+func BuildSentryEvent(tracker *Tracker) *sentry.Event <span class="cov0" title="0">{
+        if tracker.Exceptions == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">var exceptions []sentry.Exception
+        for _, ex := range tracker.Exceptions </span><span class="cov0" title="0">{
+                var trace sentry.Stacktrace
+                for i := len(ex.Stacks) - 1; i &gt;= 0; i-- </span><span class="cov0" title="0">{
+                        stack := ex.Stacks[i]
+                        trace.Frames = append(trace.Frames, sentry.Frame{
+                                Filename: stack.Filename,
+                                Function: stack.Function,
+                                Package:  stack.Package,
+                                Lineno:   stack.Lineno,
+                                Vars:     stack.Vars,
+                        })
+                }</span>
+                <span class="cov0" title="0">var exception = sentry.Exception{
+                        Value:      ex.Error.Error(),
+                        Type:       reflect.TypeOf(ex.Error).String(),
+                        Stacktrace: &amp;trace,
+                }
+                exceptions = append(exceptions, exception)</span>
+        }
+
+        <span class="cov0" title="0">event := sentry.Event{
+                Extra:     map[string]interface{}{"TrackID": tracker.ID},
+                Level:     "error",
+                Timestamp: time.Now().UTC(),
+                Sdk: sentry.SdkInfo{
+                        Name:    "sentry.go",
+                        Version: sentry.Version,
+                },
+                Release:   ConfigAppVersion,
+                Exception: exceptions,
+                Request:   tracker.Request,
+        }
+
+        return &amp;event</span>
+}
+
+func SendSentryEvent(event *sentry.Event) error <span class="cov0" title="0">{
+        if event == nil </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+        <span class="cov0" title="0">js, _ := json.Marshal(event)
+
+        req, _ := http.NewRequest("POST", ConfigSentryUrl, bytes.NewReader(js))
+        auth := fmt.Sprintf("Sentry sentry_key=%s", ConfigSentryPublicKey)
+        req.Header.Set("Content-Type", "application/json")
+        req.Header.Set("X-Sentry-Auth", auth)
+
+        resp, err := http.DefaultClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+        if resp.StatusCode != 200 </span><span class="cov0" title="0">{
+                body, _ := ioutil.ReadAll(resp.Body)
+                return errors.New(fmt.Sprintf("Sentry上报异常: %s. %s", resp.Status, body))
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func BuildAndSendSentryEvent(tracker *Tracker) <span class="cov0" title="0">{
+        event := BuildSentryEvent(tracker)
+        err := SendSentryEvent(event)
+        if err != nil </span><span class="cov0" title="0">{
+                ERROR.Println(err)
+        }</span>
+}
+
+func CheckTracker(tracker *Tracker) <span class="cov8" title="1">{
+        if tracker == nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov8" title="1">if tracker.Exceptions != nil </span><span class="cov8" title="1">{
+                if ConfigSentryUrl == "" </span><span class="cov8" title="1">{
+                        tracker.Print()
+                }</span> else<span class="cov0" title="0"> {
+                        go BuildAndSendSentryEvent(tracker)
+                }</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package alog
+
+import (
+        "github.com/gin-gonic/gin"
+        "math/rand"
+        "sync/atomic"
+        "time"
+)
+
+var _seedCounter = new(int64)
+
+func init() <span class="cov8" title="1">{
+        src := rand.NewSource(time.Now().UnixNano())
+        *_seedCounter = src.Int63()
+}</span>
+
+// RandomBytes Generates random alphanumeric bytes.
+func RandomBytes(length int) []byte <span class="cov8" title="1">{
+        const randomCodeCharSet = `1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`
+        // rand.Source is not concurrency-safe. So create one every time (on stack?)
+        src := rand.NewSource(atomic.AddInt64(_seedCounter, 1))
+        code := make([]byte, length)
+        for i := 0; i &lt; length; i++ </span><span class="cov8" title="1">{
+                code[i] = randomCodeCharSet[src.Int63()%62]
+        }</span>
+        <span class="cov8" title="1">return code</span>
+}
+
+func main() <span class="cov0" title="0">{
+        InitAlog("v1.0.0", "https://...", "812793r713452d") // 记得初始化！
+        g := gin.New()
+        g.Use(GinWithLogger(), GinWithTracker(), GinWithRecover()) // 注意顺序！
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
