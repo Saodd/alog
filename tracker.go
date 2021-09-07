@@ -141,7 +141,7 @@ func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interfa
 	if ok {
 		CE(ctx, e, trackValues...)
 	} else {
-		CE(ctx, errors.New(fmt.Sprintf("Recover: <%T> %v", err, err)), trackValues...)
+		CE(ctx, errors.New(fmt.Sprintf("Interface<%T>: %v", err, err)), trackValues...)
 	}
 }
 
