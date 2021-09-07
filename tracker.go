@@ -132,6 +132,19 @@ func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 	return
 }
 
+// CEI 意思是 Check Error Interface，可以灵活处理interface{}，一般用在recover的情况。
+func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interface{}) {
+	if err == nil {
+		return
+	}
+	e, ok := err.(error)
+	if ok {
+		CE(ctx, e, trackValues...)
+	} else {
+		CE(ctx, errors.New(fmt.Sprintf("Recover: <%T> %v", err, err)), trackValues...)
+	}
+}
+
 func BuildSentryEvent(tracker *Tracker) *sentry.Event {
 	if tracker.Exceptions == nil {
 		return nil
