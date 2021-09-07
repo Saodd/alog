@@ -61,3 +61,12 @@ func TestCEI(t *testing.T) {
 		panic(a) // 目前认为，带类型的nil是应当作为错误来处理的，不该忽略
 	})
 }
+
+func TestCERecover(t *testing.T) {
+	t.Run("panic error 应该看见一个追踪信息", func(t *testing.T) {
+		ctx, cancel := WithTracker(context.Background())
+		defer cancel()
+		defer CERecover(ctx)
+		panic(errors.New("看见我是错误！"))
+	})
+}

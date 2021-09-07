@@ -145,6 +145,12 @@ func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interfa
 	}
 }
 
+// CERecover 意思是 Check Error Recover， 进一步简化操作。
+// 用法： defer CERecover(ctx, ...)
+func CERecover(ctx context.Context, trackValues ...map[string]interface{}) {
+	CEI(ctx, recover(), trackValues...)
+}
+
 func BuildSentryEvent(tracker *Tracker) *sentry.Event {
 	if tracker.Exceptions == nil {
 		return nil
