@@ -3,6 +3,7 @@ package alog
 import (
 	"context"
 	"errors"
+	"log"
 	"testing"
 )
 
@@ -63,10 +64,17 @@ func TestCEI(t *testing.T) {
 }
 
 func TestCERecover(t *testing.T) {
-	t.Run("panic error 应该看见一个追踪信息", func(t *testing.T) {
+	t.Run("panic error 看见一串追踪栈", func(t *testing.T) {
 		ctx, cancel := WithTracker(context.Background())
 		defer cancel()
-		defer CERecover(ctx)
+		defer CERecover(ctx, V{"data": "只看见我一次"})
 		panic(errors.New("看见我是错误！"))
+	})
+	t.Run("panic error 看见一串追踪栈", func(t *testing.T) {
+		ctx, cancel := WithTracker(context.Background())
+		defer cancel()
+		defer CERecover(ctx, V{"data": "只看见我一次"})
+		var a []int
+		log.Println(a[0])
 	})
 }

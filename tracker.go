@@ -79,12 +79,7 @@ func GetTracker(ctx context.Context) *Tracker {
 	return nil
 }
 
-// CE 意思是 CheckError ，为了方便按键而起这个名字。
-func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
-	if err == nil {
-		return
-	}
-
+func ce(depth int, ctx context.Context, err error, trackValues ...map[string]interface{}) {
 	var stack ExceptionStack
 	// 合并传入的参数
 	for _, tv := range trackValues {
@@ -100,7 +95,7 @@ func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 		}
 	}
 	// 追踪当前的栈信息
-	if pc, file, line, ok := runtime.Caller(1); ok {
+	if pc, file, line, ok := runtime.Caller(depth); ok {
 		stack.Filename = file
 		stack.Lineno = line
 		f := runtime.FuncForPC(pc)
@@ -108,6 +103,8 @@ func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 		if len(words) == 2 {
 			stack.Package, stack.Function = words[0], words[1]
 		}
+	} else {
+		return
 	}
 
 	// 如果ctx里有Tracker就放进去统一处理，否则直接丢到日志里去。
@@ -129,26 +126,46 @@ func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 		js, _ := json.Marshal(stack.Vars)
 		ERROR.Printf("%s:%d: %s. %s\n", stack.Filename, stack.Lineno, err, js)
 	}
-	return
 }
 
-// CEI 意思是 Check Error Interface，可以灵活处理interface{}，一般用在recover的情况。
+// CE 意思是 CheckError ，为了方便按键而起这个名字。
+func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
+	if err == nil {
+		return
+	}
+	ce(2, ctx, err, trackValues...)
+}
+
+// CEI 意思是 Check Error Interface，可以灵活处理interface{}。
+// 建议不要用在 recover() 的情况，会丢失 panic() 的位置，请使用 CERecover 替代。
+// 建议不要使用可比较值，否则可能与其他错误栈混在一起，最好用指针或者接口变量。
 func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interface{}) {
 	if err == nil {
 		return
 	}
 	e, ok := err.(error)
 	if ok {
-		CE(ctx, e, trackValues...)
+		ce(2, ctx, e, trackValues...)
 	} else {
-		CE(ctx, errors.New(fmt.Sprintf("Interface<%T>: %v", err, err)), trackValues...)
+		ce(2, ctx, errors.New(fmt.Sprintf("Interface<%T>: %v", err, err)), trackValues...)
 	}
 }
 
 // CERecover 意思是 Check Error Recover， 进一步简化操作。
 // 用法： defer CERecover(ctx, ...)
 func CERecover(ctx context.Context, trackValues ...map[string]interface{}) {
-	CEI(ctx, recover(), trackValues...)
+	err := recover()
+	if err == nil {
+		return
+	}
+	e, ok := err.(error)
+	if !ok {
+		e = errors.New(fmt.Sprintf("Interface<%T>: %v", err, err))
+	}
+	ce(3, ctx, e, trackValues...)
+	for i := 4; i < 10; i++ { // 不确定追踪到什么程度才能追到用户代码。暂定最多追6层。
+		ce(i, ctx, e)
+	}
 }
 
 func BuildSentryEvent(tracker *Tracker) *sentry.Event {
