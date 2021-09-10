@@ -3,7 +3,6 @@ package alog
 import (
 	"context"
 	"errors"
-	"log"
 	"testing"
 )
 
@@ -75,6 +74,6 @@ func TestCERecover(t *testing.T) {
 		defer cancel()
 		defer CERecover(ctx, V{"data": "只看见我一次"})
 		var a []int
-		log.Println(a[0])
+		a[0] = 0
 	})
 }

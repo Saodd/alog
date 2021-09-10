@@ -79,8 +79,7 @@ func GetTracker(ctx context.Context) *Tracker {
 	return nil
 }
 
-func ce(depth int, ctx context.Context, err error, trackValues ...map[string]interface{}) {
-	var stack ExceptionStack
+func setValuesToStack(stack *ExceptionStack, trackValues []map[string]interface{}) {
 	// 合并传入的参数
 	for _, tv := range trackValues {
 		if tv == nil {
@@ -94,8 +93,14 @@ func ce(depth int, ctx context.Context, err error, trackValues ...map[string]int
 			}
 		}
 	}
+}
+
+func ce(ctx context.Context, err error, trackValues []map[string]interface{}) {
+	var stack ExceptionStack
+	setValuesToStack(&stack, trackValues)
+
 	// 追踪当前的栈信息
-	if pc, file, line, ok := runtime.Caller(depth); ok {
+	if pc, file, line, ok := runtime.Caller(2); ok {
 		stack.Filename = file
 		stack.Lineno = line
 		f := runtime.FuncForPC(pc)
@@ -133,7 +138,7 @@ func CE(ctx context.Context, err error, trackValues ...map[string]interface{}) {
 	if err == nil {
 		return
 	}
-	ce(2, ctx, err, trackValues...)
+	ce(ctx, err, trackValues)
 }
 
 // CEI 意思是 Check Error Interface，可以灵活处理interface{}。
@@ -145,26 +150,9 @@ func CEI(ctx context.Context, err interface{}, trackValues ...map[string]interfa
 	}
 	e, ok := err.(error)
 	if ok {
-		ce(2, ctx, e, trackValues...)
+		ce(ctx, e, trackValues)
 	} else {
-		ce(2, ctx, errors.New(fmt.Sprintf("Interface<%T>: %v", err, err)), trackValues...)
-	}
-}
-
-// CERecover 意思是 Check Error Recover， 进一步简化操作。
-// 用法： defer CERecover(ctx, ...)
-func CERecover(ctx context.Context, trackValues ...map[string]interface{}) {
-	err := recover()
-	if err == nil {
-		return
-	}
-	e, ok := err.(error)
-	if !ok {
-		e = errors.New(fmt.Sprintf("Interface<%T>: %v", err, err))
-	}
-	ce(3, ctx, e, trackValues...)
-	for i := 4; i < 10; i++ { // 不确定追踪到什么程度才能追到用户代码。暂定最多追6层。
-		ce(i, ctx, e)
+		ce(ctx, errors.New(fmt.Sprintf("Interface<%T>: %v", err, err)), trackValues)
 	}
 }
 

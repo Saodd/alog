@@ -10,10 +10,15 @@ func TestTraceStack(t *testing.T) {
 		defer Recover(context.Background())
 		panic("这个崩溃原因也要打在日志里哦！")
 	})
+	t.Run("来自运行时的异常", func(t *testing.T) {
+		defer Recover(context.Background())
+		var a []int
+		a[0] = 0
+	})
 	t.Run("没有异常时也要正常工作！", func(t *testing.T) {
 		defer Recover(context.Background())
 	})
-	t.Run("有Trcker！", func(t *testing.T) {
+	t.Run("有Tracker！", func(t *testing.T) {
 		ctx, cancel := WithTracker(context.Background())
 		defer cancel()
 		defer Recover(ctx)

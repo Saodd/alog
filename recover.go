@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func TraceStack(ctx context.Context, e interface{}) {
+func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]interface{}) {
 	err, ok := e.(error)
 	if !ok {
 		err = errors.New(fmt.Sprint(e))
@@ -30,6 +30,9 @@ func TraceStack(ctx context.Context, e interface{}) {
 			stack.Package, stack.Function = words[0], words[1]
 		}
 		stacks = append(stacks, &stack)
+	}
+	if len(stacks) != 0 {
+		setValuesToStack(stacks[0], trackValues)
 	}
 
 	// 如果ctx里有Tracker就放进去统一处理，否则直接丢到日志里去。
@@ -61,5 +64,11 @@ func TraceStack(ctx context.Context, e interface{}) {
 func Recover(ctx context.Context) {
 	if err := recover(); err != nil {
 		TraceStack(ctx, err)
+	}
+}
+
+func CERecover(ctx context.Context, trackValues ...map[string]interface{}) {
+	if err := recover(); err != nil {
+		TraceStack(ctx, err, trackValues...)
 	}
 }
