@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]interface{}) {
+func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]interface{}) error {
 	err, ok := e.(error)
 	if !ok {
 		err = errors.New(fmt.Sprint(e))
@@ -43,7 +43,7 @@ func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]in
 		for _, ex := range tracker.Exceptions {
 			if ex.Error == err {
 				ex.Stacks = append(ex.Stacks, stacks...)
-				return
+				return err
 			}
 		}
 		tracker.Exceptions = append(tracker.Exceptions, &Exception{
@@ -59,8 +59,11 @@ func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]in
 		}
 		RECOVER.Println(b.String())
 	}
+	return err
 }
 
+// Deprecated: 推荐使用 CERecover 或者 CERecoverError
+// Recover
 func Recover(ctx context.Context) {
 	if err := recover(); err != nil {
 		TraceStack(ctx, err)
@@ -70,5 +73,11 @@ func Recover(ctx context.Context) {
 func CERecover(ctx context.Context, trackValues ...map[string]interface{}) {
 	if err := recover(); err != nil {
 		TraceStack(ctx, err, trackValues...)
+	}
+}
+
+func CERecoverError(ctx context.Context, errPointer *error, trackValues ...map[string]interface{}) {
+	if err := recover(); err != nil {
+		*errPointer = TraceStack(ctx, err, trackValues...)
 	}
 }

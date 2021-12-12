@@ -30,3 +30,28 @@ func TestTraceStack(t *testing.T) {
 		defer Recover(ctx)
 	})
 }
+
+func TestRecoverError(t *testing.T) {
+	t.Run("Recover的异常要返回回去！", func(t *testing.T) {
+		f := func() (err error) {
+			ctx, cancel := WithTracker(context.Background())
+			defer cancel()
+			defer CERecoverError(ctx, &err)
+			panic("故意的")
+		}
+		if err := f(); err == nil {
+			t.Error("没有正确返回异常", err)
+		}
+	})
+	t.Run("无事发生", func(t *testing.T) {
+		f := func() (err error) {
+			ctx, cancel := WithTracker(context.Background())
+			defer cancel()
+			defer CERecoverError(ctx, &err)
+			return nil
+		}
+		if err := f(); err != nil {
+			t.Error("应该无事发生", err)
+		}
+	})
+}
