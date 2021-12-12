@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/saodd/alog/gin_middlewares.go (0.0%)</option>
 				
-				<option value="file3">github.com/saodd/alog/recover.go (91.9%)</option>
+				<option value="file3">github.com/saodd/alog/recover.go (92.5%)</option>
 				
 				<option value="file4">github.com/saodd/alog/tracker.go (56.5%)</option>
 				
@@ -241,7 +241,7 @@ import (
         "strings"
 )
 
-func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]interface{}) error <span class="cov8" title="1">{
         err, ok := e.(error)
         if !ok </span><span class="cov8" title="1">{
                 err = errors.New(fmt.Sprint(e))
@@ -276,7 +276,7 @@ func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]in
                 for _, ex := range tracker.Exceptions </span><span class="cov0" title="0">{
                         if ex.Error == err </span><span class="cov0" title="0">{
                                 ex.Stacks = append(ex.Stacks, stacks...)
-                                return
+                                return err
                         }</span>
                 }
                 <span class="cov8" title="1">tracker.Exceptions = append(tracker.Exceptions, &amp;Exception{
@@ -292,8 +292,11 @@ func TraceStack(ctx context.Context, e interface{}, trackValues ...map[string]in
                 }</span>
                 <span class="cov8" title="1">RECOVER.Println(b.String())</span>
         }
+        <span class="cov8" title="1">return err</span>
 }
 
+// Deprecated: 推荐使用 CERecover 或者 CERecoverError
+// Recover
 func Recover(ctx context.Context) <span class="cov8" title="1">{
         if err := recover(); err != nil </span><span class="cov8" title="1">{
                 TraceStack(ctx, err)
@@ -303,6 +306,12 @@ func Recover(ctx context.Context) <span class="cov8" title="1">{
 func CERecover(ctx context.Context, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
         if err := recover(); err != nil </span><span class="cov8" title="1">{
                 TraceStack(ctx, err, trackValues...)
+        }</span>
+}
+
+func CERecoverError(ctx context.Context, errPointer *error, trackValues ...map[string]interface{}) <span class="cov8" title="1">{
+        if err := recover(); err != nil </span><span class="cov8" title="1">{
+                *errPointer = TraceStack(ctx, err, trackValues...)
         }</span>
 }
 </pre>
