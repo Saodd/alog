@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+type UncomparableObject map[string]string
+
+func (e UncomparableObject) Error() string {
+	return ""
+}
+
 func TestCE(t *testing.T) {
 	t.Run("没有Tracker时直接打出来！", func(t *testing.T) {
 		CE(context.Background(), errors.New("要输出:null"), nil, nil)
@@ -21,6 +27,20 @@ func TestCE(t *testing.T) {
 	})
 	t.Run("多个map和bil的混合覆盖", func(t *testing.T) {
 		CE(context.Background(), errors.New(`要输出:{"a":2,"b":2}`), nil, V{"a": 1}, nil, V{"a": 2, "b": 2}, nil)
+	})
+	t.Run("兼容不可比较的错误值，不能panic，应该作为两个错误", func(t *testing.T) {
+		ctx, cancel := WithTracker(context.Background())
+		defer cancel()
+		err := UncomparableObject{}
+		CE(ctx, err)
+		CE(ctx, err)
+	})
+	t.Run("错误值的比较，应该显示为同一个", func(t *testing.T) {
+		ctx, cancel := WithTracker(context.Background())
+		defer cancel()
+		err := &UncomparableObject{}
+		CE(ctx, err)
+		CE(ctx, err)
 	})
 }
 
