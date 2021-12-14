@@ -436,7 +436,7 @@ func ce(ctx context.Context, err error, trackValues []map[string]interface{}) <s
                 tracker.lock.Lock()
                 defer tracker.lock.Unlock()
                 for _, ex := range tracker.Exceptions </span><span class="cov8" title="1">{
-                        if ex.Error == err </span><span class="cov8" title="1">{
+                        if errors.Is(ex.Error, err) </span><span class="cov8" title="1">{
                                 ex.Stacks = append(ex.Stacks, &amp;stack)
                                 return
                         }</span>
